@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "evidence_scope": "local_llm_stub_only",
+  "evidence_published_in_commit": "f914d30649cc65d4d0cffbbdc835f5125c0265de",
+  "source_revision_at_execution": null,
+  "runtime": {
+    "python": "3.12.13",
+    "locust": "2.46.4",
+    "operating_system": "Windows",
+    "os_build": null,
+    "cpu": null,
+    "memory": null,
+    "missing_metadata_reason": "No se capturó durante la ejecución original; no se reconstruye retroactivamente."
+  },
+  "parameters": {
+    "TPM": 34000,
+    "MAX_CONC": 4,
+    "BASE_MS": 250,
+    "MS_PER_TOK": 8,
+    "MAX_TOKENS": 128,
+    "wait_seconds": [0.05, 0.15],
+    "prompt_order": "deterministic_cycle_over_12_rows",
+    "random_seed": null
+  },
+  "runs": [
+    {
+      "profile": "smoke",
+      "result_directory": "results/smoke-20260824-170803",
+      "generated_at_utc": "2026-08-24T22:08:17Z"
+    },
+    {
+      "profile": "smoke",
+      "result_directory": "results/smoke-20260824-170904",
+      "generated_at_utc": "2026-08-24T22:09:15Z"
+    },
+    {
+      "profile": "saturation",
+      "result_directory": "results/saturation-20260824-171114",
+      "generated_at_utc": "2026-08-24T22:19:25Z"
+    },
+    {
+      "profile": "control",
+      "result_directory": "results/control-20260824-172019",
+      "generated_at_utc": "2026-08-24T22:22:35Z"
+    }
+  ],
+  "integrity_note": "Las métricas se regeneran desde CSV crudo; campos no capturados permanecen null."
+}

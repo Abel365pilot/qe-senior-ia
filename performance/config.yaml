@@ -11,8 +11,6 @@ splitAllCSVs: false
 properties:
   userPropertyFile: locust.conf
 env:
-  - name: TARGET_HOST
-    value: http://127.0.0.1:8000
   - name: LOAD_PROFILE
     value: saturation
   - name: MAX_TOKENS

@@ -1,7 +1,7 @@
 {
   "executed": true,
   "profile": "control",
-  "generated_at_utc": "2026-08-24T22:22:35.177423+00:00",
+  "generated_at_utc": "2026-08-24T23:20:17.827346+00:00",
   "source_stats": "locust_stats.csv",
   "aggregate": {
     "requests": 467,
@@ -20,7 +20,10 @@
     "available": true,
     "samples": 83,
     "max_users": 40,
-    "baseline_p95_ms": 1200.0,
+    "first_sample_p95_ms": 1200.0,
+    "reference_baseline_users": null,
+    "reference_baseline_p95_ms": null,
+    "reference_baseline_method": null,
     "maximum_p95_ms": 13000.0,
     "peak_attempt_requests_per_second": 24.2,
     "peak_success_requests_per_second": 3.3,
@@ -48,14 +51,7 @@
       "total_requests": 29,
       "total_failures": 0
     },
-    "first_p95_at_least_2x_baseline": {
-      "timestamp": 1787610025,
-      "elapsed_seconds": 4,
-      "users": 20,
-      "p95_ms": 2600.0,
-      "total_requests": 12,
-      "total_failures": 0
-    },
+    "first_p95_at_least_2x_reference_baseline": null,
     "stage_peaks": [
       {
         "users": 1,

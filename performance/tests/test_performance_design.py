@@ -3,7 +3,8 @@ from pathlib import Path
 
 import yaml
 
-import locustfile
+import analyze_results
+import load_profile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,15 +28,15 @@ def test_prompts_are_varied_and_keep_concurrency_as_first_ceiling():
 
 
 def test_saturation_shape_crosses_the_concurrency_limit():
-    stages = locustfile.build_stages("saturation", stage_seconds=60)
+    stages = load_profile.build_stages("saturation", stage_seconds=60)
     assert [stage["users"] for stage in stages] == [1, 2, 4, 6, 10, 20, 40, 60]
     assert [stage["duration"] for stage in stages] == [60, 120, 180, 240, 300, 360, 420, 480]
-    assert locustfile.stage_at(stages, 179)["users"] == 4
-    assert locustfile.stage_at(stages, 480) is None
+    assert load_profile.stage_at(stages, 179)["users"] == 4
+    assert load_profile.stage_at(stages, 480) is None
 
 
 def test_control_shape_is_short_and_repeatable():
-    stages = locustfile.build_stages("control")
+    stages = load_profile.build_stages("control")
     assert stages == [
         {"duration": 10, "users": 40, "spawn_rate": 4},
         {"duration": 70, "users": 40, "spawn_rate": 4},
@@ -55,5 +56,19 @@ def test_azure_configuration_references_all_required_artifacts_and_gates():
     assert "percentage(error)" in criteria
     assert config["autoStop"]["errorPercentage"] > 0
     assert config["autoStop"]["timeWindow"] >= 10
+    assert all(item["name"] != "TARGET_HOST" for item in config["env"])
     for filename in (config["testPlan"], config["properties"]["userPropertyFile"], *config["configurationFiles"]):
         assert (ROOT / filename).is_file()
+
+
+def test_saturation_baseline_uses_stable_four_user_stage():
+    history = analyze_results._history(
+        ROOT / "results" / "saturation-20260824-171114" / "locust_stats_history.csv",
+        "saturation",
+    )
+
+    assert history["first_sample_p95_ms"] == 1200.0
+    assert history["reference_baseline_users"] == 4
+    assert history["reference_baseline_p95_ms"] == 1500.0
+    assert history["reference_baseline_method"] == "median_last_30_samples"
+    assert history["first_p95_at_least_2x_reference_baseline"]["users"] == 10

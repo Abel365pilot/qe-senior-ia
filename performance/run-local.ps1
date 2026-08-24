@@ -84,7 +84,15 @@ try {
         throw "No se pudo generar el resumen de resultados."
     }
 
+    $summaryPath = Join-Path $resultDir "summary.json"
+    $gatePath = Join-Path $resultDir "experiment-gate.json"
+    & $pythonPath (Join-Path $scriptRoot "validate_experiment.py") --summary $summaryPath --report $gatePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "La ejecución terminó, pero no demostró el perfil esperado. Revisa $gatePath."
+    }
+
     Write-Output "Resultados: $resultDir"
+    Write-Output "Gate del experimento: $gatePath"
     Write-Output "Código de salida Locust: $locustExitCode"
     if ($Profile -eq "smoke" -and $locustExitCode -ne 0) {
         throw "El smoke produjo fallos; revisa el reporte generado."

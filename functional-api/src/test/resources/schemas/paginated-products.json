@@ -1,9 +1,9 @@
 {
-  "current_page": "#number",
+  "current_page": "#? _ >= 1 && Math.floor(_) == _",
   "data": "#array",
-  "from": "##number",
-  "last_page": "#number",
-  "per_page": "#number",
-  "to": "##number",
-  "total": "#number"
+  "from": "##? _ >= 0 && Math.floor(_) == _",
+  "last_page": "#? _ >= 1 && Math.floor(_) == _",
+  "per_page": "#? _ > 0 && Math.floor(_) == _",
+  "to": "##? _ >= 0 && Math.floor(_) == _",
+  "total": "#? _ >= 0 && Math.floor(_) == _"
 }

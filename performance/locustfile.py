@@ -7,69 +7,25 @@ validar el cableado mediante STAGE_SECONDS; la ejecución de evidencia usa 60 s.
 
 from __future__ import annotations
 
-import csv
 import itertools
 import os
-from pathlib import Path
 from typing import Any
 
 from locust import HttpUser, LoadTestShape, between, task
 
+from load_profile import build_stages, load_prompts, stage_at
 
-PROMPTS_FILE = Path(__file__).with_name("prompts.csv")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "128"))
-TARGET_HOST = os.getenv("TARGET_HOST", "http://127.0.0.1:8000")
+# Sin valor por defecto deliberadamente: local lo inyecta run-local.ps1 y Azure
+# debe recibir la URL del stub aislado al crear la prueba. Así un artefacto
+# olvidado no termina apuntando al loopback del motor gestionado.
+TARGET_HOST = os.getenv("TARGET_HOST")
 WAIT_MIN_SECONDS = float(os.getenv("WAIT_MIN_SECONDS", "0.05"))
 WAIT_MAX_SECONDS = float(os.getenv("WAIT_MAX_SECONDS", "0.15"))
 
 
-def load_prompts(path: Path = PROMPTS_FILE) -> list[dict[str, str]]:
-    with path.open(encoding="utf-8-sig", newline="") as stream:
-        prompts = list(csv.DictReader(stream))
-    required = {"id", "size", "prompt"}
-    if not prompts or not required.issubset(prompts[0]):
-        raise ValueError(f"{path.name} debe contener columnas {sorted(required)}")
-    if any(not row["prompt"].strip() for row in prompts):
-        raise ValueError(f"{path.name} contiene prompts vacíos")
-    return prompts
-
-
 PROMPTS = load_prompts()
 _prompt_cycle = itertools.cycle(PROMPTS)
-
-
-def build_stages(
-    profile: str,
-    *,
-    stage_seconds: int = 60,
-    control_ramp_seconds: int = 10,
-    control_total_seconds: int = 70,
-    smoke_seconds: int = 8,
-) -> list[dict[str, int]]:
-    """Construye etapas acumuladas; es una función pura para poder probarla."""
-    if profile == "saturation":
-        targets = (1, 2, 4, 6, 10, 20, 40, 60)
-        return [
-            {"duration": stage_seconds * index, "users": users, "spawn_rate": 2}
-            for index, users in enumerate(targets, start=1)
-        ]
-    if profile == "control":
-        if control_total_seconds <= control_ramp_seconds:
-            raise ValueError("CONTROL_TOTAL_SECONDS debe superar CONTROL_RAMP_SECONDS")
-        return [
-            {"duration": control_ramp_seconds, "users": 40, "spawn_rate": 4},
-            {"duration": control_total_seconds, "users": 40, "spawn_rate": 4},
-        ]
-    if profile == "smoke":
-        return [{"duration": smoke_seconds, "users": 2, "spawn_rate": 2}]
-    raise ValueError("LOAD_PROFILE debe ser saturation, control o smoke")
-
-
-def stage_at(stages: list[dict[str, int]], elapsed_seconds: float) -> dict[str, int] | None:
-    for stage in stages:
-        if elapsed_seconds < stage["duration"]:
-            return stage
-    return None
 
 
 class ChatCompletionUser(HttpUser):

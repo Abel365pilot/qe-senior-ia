@@ -1,123 +1,127 @@
-# Reto técnico — QE Senior con IA
+# Reto técnico — QA Automation Senior con IA
 
-Solución reproducible y sin costo para validar un asistente de compras en tres
-capas complementarias: contrato funcional de Toolshop, capacidad de un endpoint
-de IA emulado y calidad/seguridad de respuestas. La evidencia distingue siempre
-entre lo ejecutado, lo diseñado y lo no ejecutado.
+[![CI determinista](https://github.com/Abel365pilot/qe-senior-ia/actions/workflows/ci.yml/badge.svg)](https://github.com/Abel365pilot/qe-senior-ia/actions/workflows/ci.yml)
+[![Toolshop aislado](https://github.com/Abel365pilot/qe-senior-ia/actions/workflows/toolshop-local.yml/badge.svg)](https://github.com/Abel365pilot/qe-senior-ia/actions/workflows/toolshop-local.yml)
+
+Solución reproducible y fail-closed para validar un asistente de compras en tres
+capas: contrato funcional, capacidad del endpoint IA emulado y calidad/seguridad
+de respuestas. Cada conclusión enlaza riesgo, prueba, evidencia y gate; lo
+ejecutado se separa de lo diseñado y de lo pendiente.
 
 ## Entregables
 
-| Bloque | Implementación | Evidencia principal |
+| Bloque | Implementación | Evidencia/gate |
 |---|---|---|
-| A. Funcional | Karate DSL + Java 21; exactamente 4 escenarios, contratos JSON y helpers con `call` | `functional-api/evidence/functional-public-smoke-summary.txt` (4/4 público, diagnóstico) |
-| B. Rendimiento | Stub local + Locust; rampa, control, prompts parametrizados y YAML Azure | `performance/results/` |
-| C. Evaluación IA | 6 casos JSONL, Groundedness, Relevance, evaluadores propios y gate por segmento | `evaluation/results/` |
-| Gobierno | Reglas de agente, bitácora de IA, Anexo A, CI sin consumo de modelo | `AGENTS.md`, `IA.md`, `.github/workflows/ci.yml` |
-| Informe | Síntesis ejecutiva de dos páginas | `docs/informe-ejecutivo.pdf` |
+| A. API funcional | Karate + Java 21; exactamente 4 escenarios, 7 helpers, 6 contratos, `BigDecimal`, cleanup | 18 pruebas auxiliares; reportes Karate/JUnit; workflow Toolshop Docker fijado |
+| B. Rendimiento | Stub local + Locust; 12 prompts; rampa, control y smoke; Azure YAML | CSV/HTML/JSON + `experiment-gate.json` por perfil |
+| C. Evaluación IA | 6 JSONL (2/1/3), Azure AI Evaluation, 3 controles propios | same-judge PASS, cross-judge PASS, negative-control EXPECTED_FAIL |
+| Gobierno | Reglas, bitácora, matriz, estrategia, CI sin modelo | `release_gate.py`, evidencias SDK sanitizadas |
+| Informe | Síntesis ejecutiva | PDF A4 de máximo 2 páginas |
 
-## Resultado verificado
+La trazabilidad completa de los 13 criterios está en
+[`docs/traceability-matrix.md`](docs/traceability-matrix.md) y la estrategia de
+calidad en [`docs/senior-qa-strategy.md`](docs/senior-qa-strategy.md).
 
-| Control | Resultado reproducido | Alcance |
+## Resultado verificable
+
+| Control | Resultado | Alcance honesto |
 |---|---:|---|
-| Karate | 4/4 escenarios + 2/2 pruebas unitarias | Diagnóstico puntual contra Toolshop público; sin carga |
-| Locust / Python | 9/9 pruebas; 2 smokes; rampa y control completos | Solo stub en `127.0.0.1` |
-| Rampa 1→60 VU | 1 372 solicitudes; 8,53 % error; p95 19 s | Rodilla observada entre 4 y 6 VU; primer 429 a 40 VU |
-| Control 40 VU | 467 solicitudes; 44,97 % error; p95 13 s | Throughput exitoso máximo observado: 3,3 req/s |
-| Evaluación IA | 19 pruebas aprobadas, 1 opt-in omitida; 2 runs de 6/6 | Jueces Gemini 2.5 Flash Lite y Gemini 3.1 Flash Lite |
-| Quality gate | **APROBADO**, cero fallos | Peor resultado por caso entre ambos jueces |
+| Funcional sin red | 18/18 pruebas Java | Configuración, contratos, arquitectura, datos y oracle; no prueba Toolshop |
+| Karate diagnóstico | 4/4 escenarios | Instancia pública, versión previa; no sustituye el SUT aislado |
+| Locust/Python | 17/17 pruebas; 2 smokes; rampa y control | Solo stub en localhost |
+| Rampa 1→60 VU | 1 372 solicitudes; 8,528 % error; p95 19 s | Cola visible a 6 VU; 2× baseline estable a 10; SLO excedido a 20 |
+| Control 40 VU | 467 solicitudes; 44,968 % error; p95 13 s | Techo exitoso repetido: 3,3 req/s |
+| Evaluación buena | 3 runs completos de 6/6 | Dos con el mismo juez y uno con juez alterno |
+| Repetibilidad | PASS; acuerdo exacto 100 %; delta 0 | Gemini 3.1 Flash Lite, mismas seis respuestas |
+| Robustez entre jueces | PASS; delta máximo 2 | No equivale a repetibilidad |
+| Control negativo real | EXPECTED_FAIL; código 1; 10 fallos | Seis respuestas malas evaluadas por el SDK, no fixture |
+| Confianza | 6/6; Wilson 95 % inferior 0,6097 | Descriptivo; dataset fijo, sin inferencia productiva |
 
-La evaluación entre dos modelos prueba robustez entre jueces, no repetibilidad
-pura con un único juez. Una repetición adicional con Gemini 2.5 Flash Lite fue
-bloqueada por la cuota gratuita observada de 20 solicitudes; no se alteraron los
-resultados ni los umbrales para obtener la aprobación.
-
-## Arquitectura y criterio de aislamiento
+## Arquitectura y aislamiento
 
 ```text
-Toolshop local <-- Karate (contrato/negocio)      [sin carga]
-Stub localhost <-- Locust (capacidad/percentiles) [sin terceros]
-Dataset JSONL  <-- Azure AI Evaluation + gate     [sin CI/modelo]
+Toolshop Docker fijado <-- Karate      contrato y negocio; nunca carga
+Stub localhost         <-- Locust      capacidad y percentiles; cero terceros
+JSONL fijo              <-- SDK + gate calidad, estabilidad y control negativo
 ```
 
-- Cada carrito usa un identificador nuevo y el login negativo usa un dominio
-  reservado; ningún escenario depende del orden.
-- La carga solo acepta `localhost`; los 429 válidos cuentan como fallo de
-  capacidad para no maquillar la saturación.
-- El gate falla cerrado ante datos ausentes, incompletos o no finitos. En dos
-  corridas toma el peor puntaje de cada caso.
-- CI ejecuta unidades, controles deterministas y un smoke local. No llama al
-  proveedor del modelo, no hace una rampa de saturación ni carga Toolshop.
+- Toolshop queda fijado al commit
+  `9e7736c3841ec2bbb9a6822c9e6602353b7b9a65`; su OpenAPI tiene SHA-256
+  `a1b79c7e0df4ee64f3ae0fbc76401c1e2071fc5fbaa00bb8b89d482df09e9580`.
+- El workflow `toolshop-local.yml` levanta ese SUT en Docker, espera salud,
+  ejecuta 4 escenarios y conserva OpenAPI, estado, logs y reportes. Nunca llama
+  a la instancia pública.
+- Cada carrito usa un ID nuevo; `X-QE-Run-Id` correlaciona fallos y
+  `afterScenario` intenta una limpieza defensiva sin retry ciego.
+- Locust registra 429 como fallos de capacidad. El `service_gate` de smoke exige
+  0 % error y p95 ≤2,5 s; el `experiment_gate` exige demostrar saturación.
+- El gate IA falla ante datos ausentes/no finitos, mezcla de variantes o
+  evidencia duplicada. CI reproduce decisiones sin invocar ningún modelo.
 
-## Ejecución rápida
+## Reproducción
 
-### 1. Funcional
-
-La evidencia versionada ejecutó 4/4 escenarios contra la instancia pública, sin
-carga, y 2/2 unidades. Docker Desktop quedó instalado, pero su daemon no pudo
-iniciar porque Windows no tiene WSL habilitado; esa desviación está declarada y
-no se presenta como prueba local. Para repetir en local se requiere Java 21,
-Docker operativo y Toolshop iniciado. Las credenciales se inyectan en variables
-de entorno; nunca se almacenan.
+### A. Toolshop local
 
 ```powershell
-cd functional-api
+git clone https://github.com/testsmith-io/practice-software-testing.git
+cd practice-software-testing
+git checkout --detach 9e7736c3841ec2bbb9a6822c9e6602353b7b9a65
+docker compose -f docker-compose.prod.yml up --pull missing -d
+
+cd ..\qe-senior-ia\functional-api
 $env:TOOLSHOP_USER_EMAIL = Read-Host 'Email Toolshop'
 $env:TOOLSHOP_USER_PASSWORD = Read-Host 'Password Toolshop' -MaskInput
 .\mvnw.cmd clean test -Dkarate.env=local
 ```
 
-El detalle del arranque local, configuración y mitigación de intermitencia está
-en [`functional-api/README.md`](functional-api/README.md).
+Las credenciales solo se inyectan por entorno. Configuración, seguridad y causa
+precisa de intermitencia: [`functional-api/README.md`](functional-api/README.md).
 
-### 2. Rendimiento
+### B. Rendimiento local
 
 ```powershell
 cd performance
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
+.\run-local.ps1 -Profile smoke -SkipInstall
 .\run-local.ps1 -Profile saturation -SkipInstall
 .\run-local.ps1 -Profile control -SkipInstall
 ```
 
-`performance/config.yaml` es un diseño equivalente para Azure Load Testing; no
-se ejecuta en Azure porque `127.0.0.1` allí sería el motor administrado y crear
-recursos contradice el requisito de costo cero.
+`performance/config.yaml` sigue el esquema Azure Load Testing v0.1, pero no
+incluye loopback: `TARGET_HOST` debe inyectarse con la URL de un stub aislado
+accesible. No se creó ni ejecutó ningún recurso Azure.
 
-### 3. Evaluación IA
+### C. Evaluación y gates sin red
 
 ```powershell
 cd evaluation
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe quality_gate.py --results results\run1_gemini-2.5-flash-lite.json results\run2_gemini-3.1-flash-lite.json
+.\.venv\Scripts\python.exe quality_gate.py --results results\run2_gemini-3.1-flash-lite.json results\evaluation_full_good_20260824T230559Z.json --report results\quality_gate_good.json
 ```
 
-Las variables del proveedor y los códigos de salida (`0` aprobado, `1` calidad
-insuficiente, `2` entrada/configuración inválida) se documentan en
-[`evaluation/README.md`](evaluation/README.md). `PF_WORKER_COUNT=1` se fuerza en
-el runner para controlar consumo. Las nuevas llamadas al juez son opt-in y no
-forman parte de CI.
+El gate usa `0=PASS`, `1=calidad insuficiente` y `2=evidencia/configuración
+inválida`. El control negativo debe retornar 1. Detalle:
+[`evaluation/README.md`](evaluation/README.md).
 
-## Decisiones senior
+## Decisión de liberación
 
-- **p95 sobre promedio.** El promedio mezcla respuestas 200 encoladas con 429
-  rápidos y puede mejorar cuando el sistema rechaza más tráfico. p95 se lee junto
-  con throughput exitoso y error.
-- **Cuatro escenarios, no más.** Cubren los tres criterios de aceptación y un
-  negativo real sin convertir la suite en una colección redundante.
-- **Dataset pequeño pero estratificado.** Incluye 2 casos respondibles, 1 no
-  respondible y 3 adversariales. Sirve como gate inicial, no como estimación
-  estadística de producción.
-- **Evidencia honesta.** Un resultado de diseño, fixture o smoke nunca se etiqueta
-  como ejecución completa ni como métrica del modelo.
+- **GO para demostración técnica:** código, datos, evidencia y gates son
+  auditables y ejecutables.
+- **NO-GO para producción:** antes se exige Toolshop Docker verde en CI,
+  etiquetado humano y 35 casos como mínimo (50 recomendados) por segmento para
+  calibración. Repetir las mismas seis respuestas no aumenta `n`.
 
 ## Seguridad y reproducibilidad
 
-- `.env`, claves y artefactos sensibles están ignorados por Git.
-- No hay facturación, recursos Azure, carga a terceros ni secretos en el código.
-- Versiones fijadas en `pom.xml` y archivos `requirements*.txt`.
-- El informe, los CSV crudos, los resúmenes y el historial permiten reconstruir
-  cada conclusión sin depender de capturas aisladas.
+- `.env`, claves, raw SDK interno, `.venv` y `target/` están ignorados.
+- La evidencia SDK pública conserva razones, tokens, scores, modelo y SHA-256;
+  elimina prompts internos, headers, Studio URL y credenciales.
+- Versiones están fijadas; CI usa permisos mínimos, timeouts, concurrencia
+  cancelable y publica artefactos aun ante fallo.
+- `scripts/release_gate.py` verifica entregables, dataset, escenarios,
+  repetibilidad, control negativo, carga, referencias y secretos.
 
 Autor: Carlos Abel Dominguez Bautista — 24 de agosto de 2026.

@@ -2,7 +2,8 @@
   "id": "#string",
   "cart_id": "#string",
   "product_id": "#string",
-  "quantity": "#number",
-  "discount_percentage": "##number",
+  "quantity": "#? _ > 0 && Math.floor(_) == _",
+  "discount_percentage": "##? _ >= 0 && _ <= 100",
+  "discounted_price": "##? _ >= 0",
   "product": "#object"
 }

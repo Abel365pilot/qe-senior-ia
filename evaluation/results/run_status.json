@@ -1,33 +1,67 @@
 {
-  "schema_version": "1.0",
-  "status": "completed_cross_judge",
-  "evaluated_at": "2026-08-24T22:30:25Z",
-  "full_runs_completed": 2,
+  "schema_version": "2.0",
+  "status": "completed_repeatability_and_negative_control",
+  "evaluated_at": "2026-08-24T23:09:00Z",
+  "good_runs_completed": 3,
+  "negative_control_runs_completed": 1,
   "runs": [
     {
       "model": "gemini-2.5-flash-lite",
+      "variant": "good",
       "rows": 6,
-      "result": "evaluation_full_good_20260824T222241Z.json",
-      "raw_result": "raw_full_good_20260824T222241Z.json"
+      "result": "evaluation_full_good_20260824T222241Z.json"
     },
     {
       "model": "gemini-3.1-flash-lite",
+      "variant": "good",
       "rows": 6,
-      "result": "evaluation_full_good_20260824T222920Z.json",
-      "raw_result": "raw_full_good_20260824T222920Z.json"
+      "result": "evaluation_full_good_20260824T222920Z.json"
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "variant": "good",
+      "rows": 6,
+      "result": "evaluation_full_good_20260824T230559Z.json",
+      "sdk_audit": "sdk_audit_same_judge_good_20260824T230559Z.json"
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "variant": "bad",
+      "rows": 6,
+      "result": "evaluation_full_bad_20260824T230741Z.json",
+      "sdk_audit": "sdk_audit_negative_control_bad_20260824T230741Z.json"
     }
   ],
-  "quality_gate": {
-    "status": "passed",
-    "exit_code": 0,
-    "failures": 0,
-    "aggregation": "worst score per case across runs",
-    "report": "quality_gate_cross_judge_20260824T223025Z.json"
+  "quality_gates": {
+    "same_judge_repeatability": {
+      "status": "passed",
+      "exit_code": 0,
+      "report": "quality_gate_good.json",
+      "exact_score_agreement": 1.0
+    },
+    "cross_judge_robustness": {
+      "status": "passed",
+      "exit_code": 0,
+      "report": "quality_gate_senior_cross_judge_20260824T223025Z.json",
+      "maximum_judge_delta": 2.0
+    },
+    "negative_control": {
+      "status": "expected_failure",
+      "exit_code": 1,
+      "report": "quality_gate_negative_control.json",
+      "blocking_failures": 10
+    }
+  },
+  "confidence": {
+    "fixed_cases": 6,
+    "conforming_good_cases": 6,
+    "wilson_95_lower": 0.6097,
+    "population_inference_allowed": false
   },
   "limitations": [
-    "Las dos corridas usan jueces distintos y demuestran robustez cross-judge; no prueban repetibilidad pura del mismo juez.",
-    "Un segundo run con gemini-2.5-flash-lite fue bloqueado por cuota free-tier observada de 20 solicitudes para ese modelo.",
-    "Un intento con gemini-2.5-flash falló por salida JSON truncada/no válida del juez y no se registró como resultado completo."
+    "Los seis casos son fijos y curados; los resultados no certifican producción.",
+    "La repetición usa las mismas respuestas y no aumenta el tamaño muestral.",
+    "Se recomiendan 35 casos como mínimo y 50 por segmento para calibración con etiquetas humanas."
   ],
   "invented_results": false
 }

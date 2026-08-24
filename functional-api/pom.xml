@@ -15,6 +15,7 @@
         <karate.version>1.5.2</karate.version>
         <junit.version>5.11.4</junit.version>
         <karate.env>local</karate.env>
+        <karate.threads>1</karate.threads>
     </properties>
 
     <dependencies>
@@ -59,6 +60,7 @@
                     </includes>
                     <systemPropertyVariables>
                         <karate.env>${karate.env}</karate.env>
+                        <karate.threads>${karate.threads}</karate.threads>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

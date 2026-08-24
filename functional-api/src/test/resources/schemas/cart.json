@@ -1,5 +1,5 @@
 {
   "id": "#string",
-  "additional_discount_percentage": "##number",
+  "additional_discount_percentage": "##? _ >= 0 && _ <= 100",
   "cart_items": "#array"
 }

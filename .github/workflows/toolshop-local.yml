@@ -1,0 +1,329 @@
+name: toolshop-local-karate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "functional-api/**"
+      - ".github/workflows/toolshop-local.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: toolshop-local-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SUT_REPOSITORY: https://github.com/testsmith-io/practice-software-testing.git
+  SUT_COMMIT: 9e7736c3841ec2bbb9a6822c9e6602353b7b9a65
+  EXPECTED_OPENAPI_SHA256: a1b79c7e0df4ee64f3ae0fbc76401c1e2071fc5fbaa00bb8b89d482df09e9580
+  SPRINT: sprint5
+  DISABLE_LOGGING: "true"
+  COMPOSE_PROJECT_NAME: qe-toolshop
+  TOOLSHOP_API_IMAGE: testsmith/practice-software-testing-sprint5-api@sha256:72f077ed05e203e9a97c4864d1db52030b7d39dbd1c6fe21240754c00bba0fe3
+  TOOLSHOP_WEB_IMAGE: nginx:1.23.3-alpine@sha256:6318314189b40e73145a48060bff4783a116c34cc7241532d0d94198fb2c9629
+  TOOLSHOP_DB_IMAGE: yobasystems/alpine-mariadb:10.6.11@sha256:8bb25ca2d68c81118fcf745959560de2f316a178abf9decc8bb5b6f86c929084
+
+jobs:
+  karate-against-local-toolshop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUT_DIR: /tmp/practice-software-testing-${{ github.run_id }}-${{ github.run_attempt }}
+      IMAGE_OVERRIDE: /tmp/toolshop-images-${{ github.run_id }}-${{ github.run_attempt }}.override.yml
+      EVIDENCE_DIR: ${{ github.workspace }}/artifacts/toolshop-local
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout de la entrega
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Obtener Toolshop en el commit fijado y registrar procedencia
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_DIR" "$SUT_DIR"
+
+          git -C "$SUT_DIR" init --quiet
+          git -C "$SUT_DIR" remote add origin "$SUT_REPOSITORY"
+          git -C "$SUT_DIR" fetch --depth=1 --no-tags origin "$SUT_COMMIT"
+          git -C "$SUT_DIR" checkout --detach --quiet FETCH_HEAD
+
+          actual_commit="$(git -C "$SUT_DIR" rev-parse HEAD)"
+          if [[ "$actual_commit" != "$SUT_COMMIT" ]]; then
+            echo "Commit SUT inesperado: $actual_commit" >&2
+            exit 1
+          fi
+
+          git -C "$SUT_DIR" show -s --format=fuller HEAD > "$EVIDENCE_DIR/sut-commit.txt"
+          (
+            cd "$SUT_DIR"
+            sha256sum docker-compose.prod.yml .env > "$EVIDENCE_DIR/sut-source.sha256"
+            sha256sum sprint5/API/composer.lock > "$EVIDENCE_DIR/composer-lock.sha256"
+            git archive --format=tar "$SUT_COMMIT" sprint5/API \
+              | sha256sum > "$EVIDENCE_DIR/sut-api-tree.sha256"
+            printf '%s  %s\n' \
+              "$EXPECTED_OPENAPI_SHA256" \
+              sprint5/API/storage/api-docs/api-docs.json \
+              | sha256sum --check --strict -
+          )
+          {
+            echo "repository=$SUT_REPOSITORY"
+            echo "commit=$actual_commit"
+            echo "sprint=$SPRINT"
+            echo "api_image=$TOOLSHOP_API_IMAGE"
+            echo "web_image=$TOOLSHOP_WEB_IMAGE"
+            echo "db_image=$TOOLSHOP_DB_IMAGE"
+            echo "candidate_commit=$GITHUB_SHA"
+            echo "workflow_ref=$GITHUB_WORKFLOW_REF"
+            echo "run_id=$GITHUB_RUN_ID"
+            echo "run_attempt=$GITHUB_RUN_ATTEMPT"
+            echo "runner_os=$RUNNER_OS"
+            echo "captured_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > "$EVIDENCE_DIR/run-context.txt"
+
+      - name: Validar y levantar el SUT local con imágenes preconstruidas
+        working-directory: /tmp/practice-software-testing-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          # La API usa un runtime fijado, pero monta el código exacto del commit
+          # y luego instala su composer.lock. La imagen web oficial es ARM64;
+          # reproducimos su Dockerfile de tres líneas con nginx multiarch fijado
+          # y el vhost.conf del commit, sin emulación ni código remoto.
+          cat > "$IMAGE_OVERRIDE" <<EOF
+          services:
+            laravel-api:
+              image: $TOOLSHOP_API_IMAGE
+              volumes:
+                - $SUT_DIR/sprint5/API:/var/www
+            web:
+              image: $TOOLSHOP_WEB_IMAGE
+              volumes:
+                - $SUT_DIR/_docker/vhost.conf:/etc/nginx/conf.d/default.conf:ro
+            mariadb:
+              image: $TOOLSHOP_DB_IMAGE
+          EOF
+
+          compose=(docker compose -f docker-compose.prod.yml -f "$IMAGE_OVERRIDE")
+          "${compose[@]}" config --quiet
+          "${compose[@]}" config > "$EVIDENCE_DIR/docker-compose.resolved.yml"
+          install -m 0644 "$IMAGE_OVERRIDE" "$EVIDENCE_DIR/toolshop-images.override.yml"
+          (
+            cd "$EVIDENCE_DIR"
+            sha256sum toolshop-images.override.yml > image-override.sha256
+          )
+          "${compose[@]}" pull laravel-api web mariadb
+          "${compose[@]}" up -d --no-build --pull never laravel-api mariadb web
+
+      - name: Instalar dependencias fijadas y sembrar la base efímera
+        run: |
+          set -euo pipefail
+          compose=(
+            docker compose
+            -f "$SUT_DIR/docker-compose.prod.yml"
+            -f "$IMAGE_OVERRIDE"
+          )
+          deadline=$((SECONDS + 180))
+          database_ready=false
+
+          while (( SECONDS < deadline )); do
+            if "${compose[@]}" exec -T mariadb \
+                sh -c 'admin=$(command -v mariadb-admin || command -v mysqladmin) && MYSQL_PWD=root "$admin" ping -h 127.0.0.1 -uroot --silent'; then
+              database_ready=true
+              break
+            fi
+            sleep 3
+          done
+
+          if [[ "$database_ready" != true ]]; then
+            echo "MariaDB no quedó lista dentro de 180 segundos" >&2
+            exit 1
+          fi
+
+          "${compose[@]}" exec -T --user root \
+            -e COMPOSER_ALLOW_SUPERUSER=1 \
+            laravel-api \
+            composer install \
+              --no-dev --no-interaction --no-progress --no-ansi \
+              --prefer-dist --optimize-autoloader --ignore-platform-req=ext-ffi \
+            | tee "$EVIDENCE_DIR/composer-install.log"
+
+          "${compose[@]}" exec -T --user root laravel-api \
+            sh -c 'chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache'
+
+          "${compose[@]}" exec -T laravel-api \
+            php artisan migrate:fresh --seed --force \
+            | tee "$EVIDENCE_DIR/migration-seed.log"
+
+      - name: Esperar API y base sembrada; capturar OpenAPI
+        run: |
+          set -euo pipefail
+          base_url="http://127.0.0.1:8091"
+          status_tmp="$RUNNER_TEMP/toolshop-status.json"
+          catalog_tmp="$RUNNER_TEMP/toolshop-products.json"
+          deadline=$((SECONDS + 420))
+          ready=false
+
+          while (( SECONDS < deadline )); do
+            if curl --fail --silent --show-error \
+                --connect-timeout 2 --max-time 5 \
+                "$base_url/status" -o "$status_tmp" \
+              && curl --fail --silent --show-error \
+                --connect-timeout 2 --max-time 5 \
+                "$base_url/products?page=1" -o "$catalog_tmp" \
+              && jq -e 'type == "object" and has("version") and has("environment") and has("app_name")' \
+                "$status_tmp" >/dev/null \
+              && jq -e 'type == "object" and (.data | type == "array" and length > 0)' \
+                "$catalog_tmp" >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 5
+          done
+
+          if [[ "$ready" != true ]]; then
+            echo "Toolshop no quedó listo dentro de 420 segundos" >&2
+            exit 1
+          fi
+
+          curl --fail --silent --show-error \
+            "$base_url/status" \
+            --dump-header "$EVIDENCE_DIR/status.headers" \
+            --output "$EVIDENCE_DIR/status.json"
+
+          openapi_source="$base_url/docs/api-docs.json"
+          if ! curl --fail --silent --show-error \
+              "$openapi_source" --output "$EVIDENCE_DIR/openapi.json"; then
+            openapi_source="container:/var/www/storage/api-docs/api-docs.json"
+            docker compose \
+              -f "$SUT_DIR/docker-compose.prod.yml" \
+              -f "$IMAGE_OVERRIDE" \
+              exec -T laravel-api \
+              sh -c 'cat /var/www/storage/api-docs/api-docs.json' \
+              > "$EVIDENCE_DIR/openapi.json"
+          fi
+
+          jq -e 'type == "object" and (has("openapi") or has("swagger")) and (.paths | type == "object" and length > 0)' \
+            "$EVIDENCE_DIR/openapi.json" >/dev/null
+          printf 'source=%s\n' "$openapi_source" > "$EVIDENCE_DIR/openapi-source.txt"
+          (
+            cd "$EVIDENCE_DIR"
+            printf '%s  openapi.json\n' "$EXPECTED_OPENAPI_SHA256" > openapi.sha256
+            sha256sum --check --strict openapi.sha256
+          )
+
+      - name: Ejecutar los cuatro escenarios Karate contra localhost
+        working-directory: functional-api
+        env:
+          TOOLSHOP_BASE_URL: http://127.0.0.1:8091
+          TOOLSHOP_CONNECT_TIMEOUT_MS: "5000"
+          TOOLSHOP_READ_TIMEOUT_MS: "10000"
+        run: |
+          set -euo pipefail
+          # Las credenciales efímeras se derivan del seeder del commit fijado;
+          # ningún valor, personal o de demostración, vive en esta entrega.
+          mapfile -t seeded_credentials < <(
+            python3 - "$SUT_DIR/sprint5/API/database/seeders/UserSeeder.php" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+          emails = re.findall(r"'email'\s*=>\s*'([^']+)'", source)
+          passwords = re.findall(r"make\('([^']+)'\)", source)
+          if not emails or not passwords:
+              raise SystemExit("No se pudieron resolver credenciales del seeder fijado")
+          print(emails[0])
+          print(passwords[0])
+          PY
+          )
+          if [[ "${#seeded_credentials[@]}" -ne 2 ]]; then
+            echo "El seeder no produjo exactamente email y password" >&2
+            exit 1
+          fi
+          echo "::add-mask::${seeded_credentials[0]}"
+          echo "::add-mask::${seeded_credentials[1]}"
+          chmod +x mvnw
+          TOOLSHOP_USER_EMAIL="${seeded_credentials[0]}" \
+          TOOLSHOP_USER_PASSWORD="${seeded_credentials[1]}" \
+            ./mvnw --batch-mode --no-transfer-progress -Dkarate.env=local clean test
+
+      - name: Capturar estado, logs e identidad de imágenes
+        if: always()
+        run: |
+          set -uo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+
+          {
+            docker version
+            docker compose version
+          } > "$EVIDENCE_DIR/docker-version.txt" 2>&1 || true
+
+          if [[ -f "$SUT_DIR/docker-compose.prod.yml" ]]; then
+            compose=(docker compose -f "$SUT_DIR/docker-compose.prod.yml")
+            if [[ -f "$IMAGE_OVERRIDE" ]]; then
+              compose+=(-f "$IMAGE_OVERRIDE")
+            fi
+
+            "${compose[@]}" ps -a \
+              > "$EVIDENCE_DIR/docker-compose-ps.txt" 2>&1 || true
+            "${compose[@]}" logs \
+              --no-color --timestamps --tail=5000 \
+              > "$EVIDENCE_DIR/docker-compose.log" 2>&1 || true
+            "${compose[@]}" images \
+              > "$EVIDENCE_DIR/docker-compose-images.txt" 2>&1 || true
+
+            : > "$EVIDENCE_DIR/container-image-identities.txt"
+            while IFS= read -r container_id; do
+              [[ -n "$container_id" ]] || continue
+              docker inspect \
+                --format 'Container={{.Name}} DeclaredImage={{.Config.Image}} ImageID={{.Image}}' \
+                "$container_id" >> "$EVIDENCE_DIR/container-image-identities.txt" 2>&1 \
+                || printf 'UNAVAILABLE=%s\n' "$container_id" \
+                  >> "$EVIDENCE_DIR/container-image-identities.txt"
+            done < <("${compose[@]}" ps -aq 2>/dev/null || true)
+          fi
+
+          (
+            cd "$EVIDENCE_DIR"
+            find . -type f ! -name evidence.sha256 -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > evidence.sha256
+          )
+
+      - name: Eliminar contenedores, red y volúmenes efímeros
+        if: always()
+        run: |
+          set -euo pipefail
+          if [[ -f "$SUT_DIR/docker-compose.prod.yml" ]]; then
+            compose=(docker compose -f "$SUT_DIR/docker-compose.prod.yml")
+            if [[ -f "$IMAGE_OVERRIDE" ]]; then
+              compose+=(-f "$IMAGE_OVERRIDE")
+            fi
+            "${compose[@]}" \
+              down -v --remove-orphans --timeout 30
+          fi
+
+      - name: Publicar evidencia funcional reproducible
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: toolshop-local-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/toolshop-local/
+            functional-api/target/karate-reports/
+            functional-api/target/surefire-reports/
+          if-no-files-found: warn
+          retention-days: 30

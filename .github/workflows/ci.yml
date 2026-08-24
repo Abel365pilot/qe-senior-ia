@@ -4,29 +4,53 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: qe-senior-ia-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
 jobs:
   functional-unit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Probar cálculo monetario sin llamar servicios externos
+      - name: Probar cálculo y soporte funcional sin llamar servicios externos
         working-directory: functional-api
-        run: mvn --batch-mode --no-transfer-progress -Dtest=CartTotalsTest test
+        shell: bash
+        run: |
+          chmod +x mvnw
+          ./mvnw --batch-mode --no-transfer-progress -Dtest='toolshop.support.*Test' test
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: functional-junit
+          path: functional-api/target/surefire-reports/
+          if-no-files-found: error
+          retention-days: 14
 
   deterministic-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -35,14 +59,43 @@ jobs:
             evaluation/requirements.txt
       - name: Instalar SDK y dependencias; ninguna prueba llama al modelo
         run: python -m pip install -r performance/requirements-dev.txt -r evaluation/requirements.txt
-      - name: Ejecutar pruebas deterministas
-        run: python -m pytest performance/tests evaluation/tests -q
-      - name: Reproducir el gate sobre las dos corridas versionadas
+      - name: Ejecutar pruebas deterministas con reporte JUnit
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          python -m pytest performance/tests evaluation/tests -q --junitxml=artifacts/pytest.xml
+      - name: Demostrar repetibilidad con dos corridas del mismo juez
+        run: >-
+          python evaluation/quality_gate.py
+          --results evaluation/results/run2_gemini-3.1-flash-lite.json
+          evaluation/results/evaluation_full_good_20260824T230559Z.json
+          --report artifacts/quality-gate-same-judge.json
+      - name: Conservar la prueba de robustez entre jueces
         run: >-
           python evaluation/quality_gate.py
           --results evaluation/results/run1_gemini-2.5-flash-lite.json
           evaluation/results/run2_gemini-3.1-flash-lite.json
-      - name: Demostrar códigos del quality gate
+          --report artifacts/quality-gate-cross-judge.json
+      - name: Demostrar que el control negativo real queda bloqueado
+        shell: bash
+        run: |
+          set +e
+          python evaluation/quality_gate.py \
+            --results evaluation/results/evaluation_full_bad_20260824T230741Z.json \
+            --report artifacts/quality-gate-negative-control.json
+          negative_code=$?
+          set -e
+          test "$negative_code" -eq 1
+      - name: Verificar que la evidencia de carga demostró cada perfil
+        shell: bash
+        run: |
+          python performance/validate_experiment.py --summary performance/results/smoke-20260824-170803/summary.json --report artifacts/smoke-1-gate.json
+          python performance/validate_experiment.py --summary performance/results/smoke-20260824-170904/summary.json --report artifacts/smoke-2-gate.json
+          python performance/validate_experiment.py --summary performance/results/saturation-20260824-171114/summary.json --report artifacts/saturation-gate.json
+          python performance/validate_experiment.py --summary performance/results/control-20260824-172019/summary.json --report artifacts/control-gate.json
+      - name: Ejecutar gate estructural, trazabilidad y escaneo de secretos
+        run: python scripts/release_gate.py --report artifacts/release-gate.json
+      - name: Demostrar códigos fail-closed del quality gate
         shell: bash
         run: |
           python evaluation/quality_gate.py --results evaluation/tests/fixtures/passing_results.json
@@ -54,12 +107,22 @@ jobs:
           set -e
           test "$failing_code" -eq 1
           test "$invalid_code" -eq 2
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: deterministic-quality-evidence
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
 
   performance-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -85,7 +148,9 @@ jobs:
           PY
           TARGET_HOST=http://127.0.0.1:8000 LOAD_PROFILE=smoke SMOKE_SECONDS=8 MAX_TOKENS=128 \
             python -m locust -f locustfile.py --headless --html smoke.html --csv smoke --csv-full-history
-      - uses: actions/upload-artifact@v4
+          python analyze_results.py --prefix smoke --profile smoke
+          python validate_experiment.py --summary summary.json --report experiment-gate.json
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: performance-smoke
@@ -93,5 +158,10 @@ jobs:
             performance/smoke*.csv
             performance/smoke.html
             performance/stub.*.txt
+            performance/summary.json
+            performance/summary.md
+            performance/experiment-gate.json
+          if-no-files-found: error
+          retention-days: 14
 
 # Política deliberada: CI no llama al modelo, no ejecuta saturación y no carga terceros.

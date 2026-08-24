@@ -1,26 +1,40 @@
 function fn() {
   var env = karate.env || 'local';
-  var allowedEnvironments = ['local', 'public'];
-  if (allowedEnvironments.indexOf(env) === -1) {
-    throw new Error('karate.env no soportado: ' + env + '. Use local o public.');
-  }
-
-  var System = Java.type('java.lang.System');
-  var runId = Java.type('java.util.UUID').randomUUID().toString();
-  var email = System.getenv('TOOLSHOP_USER_EMAIL');
-  var password = System.getenv('TOOLSHOP_USER_PASSWORD');
-
-  karate.configure('connectTimeout', 5000);
-  karate.configure('readTimeout', 10000);
-  karate.configure('logPrettyRequest', false);
-  karate.configure('logPrettyResponse', false);
-
-  return {
-    environment: env,
-    runId: runId,
+  var RuntimeSettings = Java.type('toolshop.support.RuntimeSettings');
+  var settings = RuntimeSettings.load(env);
+  var config = {
+    environment: settings.environment(),
+    baseUrl: settings.baseUrl(),
+    runId: settings.runId(),
     credentials: {
-      email: email || '',
-      password: password || ''
+      email: settings.email(),
+      password: settings.password()
     }
   };
+
+  karate.configure('connectTimeout', settings.connectTimeoutMs());
+  karate.configure('readTimeout', settings.readTimeoutMs());
+  karate.configure('lowerCaseResponseHeaders', true);
+  karate.configure('logPrettyRequest', false);
+  karate.configure('logPrettyResponse', false);
+  karate.configure('afterScenario', function() {
+    var cleanupRequired = karate.get('cleanupRequired', false);
+    var cartId = karate.get('cartId');
+    if (!cleanupRequired || !cartId) {
+      return;
+    }
+    try {
+      var cleanup = karate.call('classpath:helpers/delete-cart.feature', {
+        baseUrl: config.baseUrl,
+        cartId: cartId,
+        runId: config.runId,
+        cleanupRequired: false
+      });
+      karate.log('Limpieza defensiva de carrito', cartId, 'HTTP', cleanup.responseStatus);
+    } catch (error) {
+      karate.log('No se pudo limpiar el carrito aislado', cartId, 'causa:', String(error));
+    }
+  });
+
+  return config;
 }

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "status": "passed",
+  "passed": true,
+  "profile": "saturation",
+  "mode": "experiment_gate",
+  "failures": [],
+  "observed": {
+    "requests": 1372,
+    "max_users": 60,
+    "error_percentage": 8.528,
+    "p95_ms": 19000.0,
+    "peak_success_requests_per_second": 3.4
+  }
+}

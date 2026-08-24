@@ -4,16 +4,18 @@
 
 | Herramienta | Uso en el reto | Control humano aplicado |
 |---|---|---|
-| OpenAI Codex | Lectura del reto, diseño de arquitectura, generación de código, pruebas y documentación | Requisitos del PDF convertidos en checks verificables; ningún resultado crudo se aceptó sin ejecución |
+| OpenAI Codex (agente basado en GPT-5; el cliente no expuso un snapshot más específico) | Lectura del reto, diseño de arquitectura, generación de código, pruebas y documentación | Requisitos del PDF convertidos en checks verificables; ningún resultado crudo se aceptó sin ejecución |
 | Agentes paralelos de Codex | Implementación separada de Karate, Locust, evaluación y auditoría | Integración, pruebas cruzadas y corrección de defectos observados |
 | Gemini 2.5 Flash Lite y Gemini 3.1 Flash Lite (Google AI Studio) | Modelos juez de Groundedness y Relevance mediante `azure-ai-evaluation==1.18.3` | Dataset sembrado, PF_WORKER_COUNT=1, controles deterministas y gate por segmento; se conserva el peor resultado por caso |
 
 La IA se utilizó como acelerador de ingeniería. Las decisiones de alcance, los umbrales, la interpretación de resultados y la aceptación final se mantienen bajo responsabilidad humana.
 
-Las dos corridas integrales son una validación cruzada entre jueces. No prueban
-repetibilidad pura con el mismo modelo: una segunda corrida de Gemini 2.5 Flash
-Lite fue bloqueada por la cuota gratuita observada de 20 solicitudes. Esta
-limitación se documentó y no se sustituyó por datos inventados.
+Tres corridas buenas separan dos hipótesis: dos ejecuciones de Gemini 3.1 Flash
+Lite prueban repetibilidad sobre las mismas seis respuestas (acuerdo exacto de
+scores y decisión), y la comparación con Gemini 2.5 Flash Lite prueba robustez
+entre jueces (delta máximo de 2 puntos). Una cuarta corrida real con las seis
+respuestas malas funciona como control negativo y el gate la bloqueó con código
+1. La muestra sigue siendo pequeña, fija y no certifica producción.
 
 ## Resultado de IA incorrecto o incompleto
 

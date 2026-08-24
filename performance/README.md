@@ -8,6 +8,8 @@ Este bloque prueba exclusivamente el emulador local del Anexo B. No dirige carga
 - `locustfile.py`: solicitudes parametrizadas, validación del contrato 200/429 y perfiles `saturation`, `control` y `smoke`.
 - `prompts.csv`: 12 prompts únicos en tres tamaños.
 - `run-local.ps1`: fija el experimento, arranca y detiene el stub, ejecuta Locust y guarda CSV, HTML, logs y resumen.
+- `experiment_policy.json` + `validate_experiment.py`: gate fail-closed que separa salud del servicio de validez del experimento.
+- `experiment_manifest.json`: parámetros y metadatos preservados; lo no capturado queda `null`, no inferido.
 - `config.yaml`: artefacto de Azure Load Testing de diseño; no se ejecuta en Azure.
 - `tests/`: contrato determinista del stub, perfil, prompts y configuración Azure.
 
@@ -42,17 +44,28 @@ python -m pytest -q
 ```
 
 Cada ejecución crea una carpeta fechada bajo `results/`. Un código Locust 1 es esperado en saturación/control si los 429 se registran correctamente como fallos de capacidad; el smoke debe terminar en 0.
+Después de resumir los CSV, `run-local.ps1` ejecuta el gate del perfil y escribe
+`experiment-gate.json`. Sus códigos son `0=aprobado`, `1=política incumplida` y
+`2=evidencia inválida`.
+
+El gate evita un falso verde frecuente: una rampa que nunca satura puede tener
+0% de errores, pero no demuestra capacidad. Por eso el smoke exige p95 <=2,5 s
+y cero errores, mientras que rampa/control exigen alcanzar la carga diseñada,
+cruzar p95 y error, observar 429 desde 40 VU y mantener el throughput exitoso en
+el rango 2,5-4,5 req/s previsto por el modelo analítico.
 
 ### Evidencia ejecutada en esta entrega
 
-Se verificaron 9 pruebas deterministas y todas aprobaron. Dos smokes contra un
+Se verificaron 17 pruebas deterministas y todas aprobaron. Dos smokes contra un
 stub nuevo consolidaron 10 solicitudes cada uno, 0 fallos y p95 de 1 500/1 400
 ms.
 
 La rampa completa `saturation-20260824-171114` ejecutó los ocho niveles durante
 8 minutos: 1 372 solicitudes, 117 fallos (8.53%), p95 de 19 000 ms y máximo de
-60 usuarios. El p95 duplicó el baseline al llegar a 6 usuarios y superó el SLO
-de 5 000 ms a 20 usuarios. El primer 429 apareció a los 419 s con 40 usuarios;
+60 usuarios. Frente al baseline estable de 1 500 ms (mediana de las últimas 30
+muestras de la etapa de 4 VU), el p95 cruzó 2x a 10 VU; a 6 VU fue 2 200 ms
+(1,47x). Superó el SLO de
+5 000 ms a 20 VU. El primer 429 apareció a los 419 s con 40 usuarios;
 el error acumulado cruzó 5% al final con 60. El throughput exitoso se estabilizó
 en 3.3–3.4 req/s aunque el intentado alcanzó 12.5 req/s.
 
@@ -85,6 +98,12 @@ El stub no emula streaming, caché, batching, longitud de salida variable, timeo
 
 `config.yaml` sigue el esquema `v0.1`, declara Locust, `prompts.csv`, `locust.conf`, p95, porcentaje de error y parada automática. Una instancia de motor no equivale a un usuario virtual: los usuarios los gobierna `LoadTestShape`, mientras que `engineInstances` aporta generadores de carga y cambia la capacidad del inyector. Antes de comparar Azure con local se debe conservar un solo motor y verificar que no sea el cuello de botella.
 
-El emulador vive en `127.0.0.1` del equipo local. En Azure, esa dirección sería el propio motor gestionado, no este equipo. Por ello el YAML es deliberadamente un artefacto no ejecutado: una ejecución real exigiría exponer una instancia aislada del stub accesible desde Azure y reemplazar `TARGET_HOST`. `locust.conf` no fija host, de modo que ese valor no puede quedar anulado. La saturación se mantiene local para no crear costos ni atacar servicios ajenos.
+El emulador vive en `127.0.0.1` del equipo local. En Azure, esa dirección sería
+el propio motor gestionado, no este equipo. Por ello el YAML no incluye
+`TARGET_HOST`: una ejecución real debe exponer una instancia aislada del stub e
+inyectar su URL como variable de entorno al crear la prueba. `locustfile.py`
+tampoco tiene un host por defecto; si se omite la URL, Locust falla antes de
+enviar tráfico. Esta entrega no despliega ese stub ni crea recursos, por lo que
+el artefacto Azure queda diseñado y validado, pero no ejecutado.
 
 Los umbrales del YAML se documentan como parte del artefacto y deben contrastarse con los resultados versionados: p95 mayor que 5 000 ms o error mayor que 5% falla la prueba; `autoStop` interrumpe si el error supera 20% durante 30 segundos. El smoke de CI, si se incorpora, debe usar umbrales más laxos porque un runner comparte CPU entre stub e inyector y no es comparable con la corrida local.

@@ -1,4 +1,4 @@
-# Reglas del agente para QE Senior con IA
+# Reglas del agente para QA Automation Senior con IA
 
 ## Dominio y alcance
 
@@ -26,6 +26,8 @@ No introducir Playwright, Cucumber, otro motor de carga ni un SDK sustituto de A
 ## Restricciones obligatorias
 
 - Nunca escribir, imprimir, commitear ni copiar credenciales o tokens.
+- Fijar el SUT por commit e integridad; no ejecutar el workflow funcional contra
+  la instancia pública compartida.
 - Nunca ejecutar carga contra Toolshop, el proveedor del modelo o un tercero; solo contra `localhost` o un destino expresamente autorizado.
 - Nunca ejecutar la saturación completa en CI.
 - Nunca llamar al modelo desde CI; CI solo relee resultados versionados.
