@@ -1,0 +1,11 @@
+* text=auto
+
+# Ejecutables y configuración multiplataforma.
+functional-api/mvnw text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Artefactos generados: preservar bytes y evitar diffs engañosos.
+*.pdf binary
+performance/results/** binary

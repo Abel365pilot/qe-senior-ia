@@ -1,0 +1,98 @@
+{
+  "executed": true,
+  "profile": "control",
+  "generated_at_utc": "2026-08-24T22:22:35.177423+00:00",
+  "source_stats": "locust_stats.csv",
+  "aggregate": {
+    "requests": 467,
+    "failures": 210,
+    "error_percentage": 44.968,
+    "requests_per_second": 5.658,
+    "failures_per_second": 2.544,
+    "average_ms": 6064.343,
+    "minimum_ms": 0.905,
+    "maximum_ms": 23505.307,
+    "p50_ms": 4700.0,
+    "p95_ms": 13000.0,
+    "p99_ms": 13000.0
+  },
+  "history": {
+    "available": true,
+    "samples": 83,
+    "max_users": 40,
+    "baseline_p95_ms": 1200.0,
+    "maximum_p95_ms": 13000.0,
+    "peak_attempt_requests_per_second": 24.2,
+    "peak_success_requests_per_second": 3.3,
+    "first_failure": {
+      "timestamp": 1787610076,
+      "elapsed_seconds": 55,
+      "users": 40,
+      "p95_ms": 13000.0,
+      "total_requests": 172,
+      "total_failures": 4
+    },
+    "first_error_above_5_percent": {
+      "timestamp": 1787610077,
+      "elapsed_seconds": 56,
+      "users": 40,
+      "p95_ms": 13000.0,
+      "total_requests": 202,
+      "total_failures": 31
+    },
+    "first_p95_above_5000_ms": {
+      "timestamp": 1787610031,
+      "elapsed_seconds": 10,
+      "users": 40,
+      "p95_ms": 5200.0,
+      "total_requests": 29,
+      "total_failures": 0
+    },
+    "first_p95_at_least_2x_baseline": {
+      "timestamp": 1787610025,
+      "elapsed_seconds": 4,
+      "users": 20,
+      "p95_ms": 2600.0,
+      "total_requests": 12,
+      "total_failures": 0
+    },
+    "stage_peaks": [
+      {
+        "users": 1,
+        "samples": 1,
+        "last_p95_ms": 13000.0,
+        "maximum_p95_ms": 13000.0,
+        "last_average_ms": 6064.343,
+        "peak_success_requests_per_second": 3.2,
+        "maximum_cumulative_error_percentage": 44.968
+      },
+      {
+        "users": 4,
+        "samples": 2,
+        "last_p95_ms": 13000.0,
+        "maximum_p95_ms": 13000.0,
+        "last_average_ms": 6021.782,
+        "peak_success_requests_per_second": 3.1,
+        "maximum_cumulative_error_percentage": 45.259
+      },
+      {
+        "users": 20,
+        "samples": 2,
+        "last_p95_ms": 13000.0,
+        "maximum_p95_ms": 13000.0,
+        "last_average_ms": 5785.374,
+        "peak_success_requests_per_second": 3.1,
+        "maximum_cumulative_error_percentage": 46.875
+      },
+      {
+        "users": 40,
+        "samples": 62,
+        "last_p95_ms": 13000.0,
+        "maximum_p95_ms": 13000.0,
+        "last_average_ms": 5484.03,
+        "peak_success_requests_per_second": 3.3,
+        "maximum_cumulative_error_percentage": 53.846
+      }
+    ]
+  }
+}

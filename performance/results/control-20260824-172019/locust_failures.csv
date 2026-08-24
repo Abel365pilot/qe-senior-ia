@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,/chat/completions,CatchResponseError('rate_limit_exceeded; Retry-After=1s'),158,2026-08-24T22:21:17Z,2026-08-24T22:21:19Z
+POST,/chat/completions,CatchResponseError('rate_limit_exceeded; Retry-After=3s'),11,2026-08-24T22:21:15Z,2026-08-24T22:21:16Z
+POST,/chat/completions,CatchResponseError('rate_limit_exceeded; Retry-After=2s'),41,2026-08-24T22:21:16Z,2026-08-24T22:21:17Z

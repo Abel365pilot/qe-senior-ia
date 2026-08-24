@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+
+QE_MVN_VERSION="3.9.11"
+QE_PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+QE_MVN_CACHE="$QE_PROJECT_DIR/.mvn/wrapper/dists/apache-maven-$QE_MVN_VERSION"
+QE_MVN_BIN="$QE_MVN_CACHE/apache-maven-$QE_MVN_VERSION/bin/mvn"
+QE_MVN_ARCHIVE="$QE_MVN_CACHE/apache-maven-$QE_MVN_VERSION-bin.tar.gz"
+QE_MVN_URL="https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/$QE_MVN_VERSION/apache-maven-$QE_MVN_VERSION-bin.tar.gz"
+QE_MVN_SHA512="bcfe4fe305c962ace56ac7b5fc7a08b87d5abd8b7e89027ab251069faebee516b0ded8961445d6d91ec1985dfe30f8153268843c89aa392733d1a3ec956c9978"
+
+if [ ! -x "$QE_MVN_BIN" ]; then
+  mkdir -p "$QE_MVN_CACHE"
+  echo "Descargando Apache Maven $QE_MVN_VERSION (una sola vez)..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$QE_MVN_URL" -o "$QE_MVN_ARCHIVE"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q "$QE_MVN_URL" -O "$QE_MVN_ARCHIVE"
+  else
+    echo "Se necesita curl o wget para descargar Maven." >&2
+    exit 1
+  fi
+  printf '%s  %s\n' "$QE_MVN_SHA512" "$QE_MVN_ARCHIVE" | sha512sum -c -
+  tar -xzf "$QE_MVN_ARCHIVE" -C "$QE_MVN_CACHE"
+fi
+
+exec "$QE_MVN_BIN" "$@"

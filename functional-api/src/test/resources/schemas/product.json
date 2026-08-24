@@ -1,0 +1,14 @@
+{
+  "id": "#string",
+  "name": "#string",
+  "description": "#string",
+  "price": "#number",
+  "is_location_offer": "#boolean",
+  "is_rental": "#boolean",
+  "in_stock": "#? _ === true || _ === false || typeof _ === 'number'",
+  "co2_rating": "#string",
+  "is_eco_friendly": "#boolean",
+  "brand": "##object",
+  "category": "##object",
+  "product_image": "##object"
+}

@@ -1,0 +1,31 @@
+version: v0.1
+testId: qe-senior-ia-saturation
+displayName: QE Senior IA - saturacion del stub LLM
+description: Artefacto Locust para el emulador de IA; no ejecutado en Azure.
+testPlan: locustfile.py
+testType: Locust
+engineInstances: 1
+configurationFiles:
+  - prompts.csv
+splitAllCSVs: false
+properties:
+  userPropertyFile: locust.conf
+env:
+  - name: TARGET_HOST
+    value: http://127.0.0.1:8000
+  - name: LOAD_PROFILE
+    value: saturation
+  - name: MAX_TOKENS
+    value: "128"
+  - name: STAGE_SECONDS
+    value: "60"
+  - name: WAIT_MIN_SECONDS
+    value: "0.05"
+  - name: WAIT_MAX_SECONDS
+    value: "0.15"
+failureCriteria:
+  - p95(response_time_ms) > 5000
+  - percentage(error) > 5
+autoStop:
+  errorPercentage: 20
+  timeWindow: 30

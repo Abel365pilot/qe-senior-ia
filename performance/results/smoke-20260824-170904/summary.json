@@ -1,0 +1,25 @@
+{
+  "executed": true,
+  "profile": "smoke",
+  "generated_at_utc": "2026-08-24T22:09:15.281434+00:00",
+  "source_stats": "locust_stats.csv",
+  "aggregate": {
+    "requests": 10,
+    "failures": 0,
+    "error_percentage": 0.0,
+    "requests_per_second": 1.397,
+    "failures_per_second": 0.0,
+    "average_ms": 1307.351,
+    "minimum_ms": 1114.459,
+    "maximum_ms": 1426.036,
+    "p50_ms": 1300.0,
+    "p95_ms": 1400.0,
+    "p99_ms": 1400.0
+  },
+  "history": {
+    "available": true,
+    "samples": 9,
+    "max_users": 2,
+    "first_failure_timestamp": null
+  }
+}

@@ -1,0 +1,23 @@
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+target/
+*.log
+.idea/
+.vscode/
+.DS_Store
+desktop.ini
+
+# Resultados temporales. Solo se versionan evidencias finales seleccionadas.
+performance/tmp/
+evaluation/tmp/

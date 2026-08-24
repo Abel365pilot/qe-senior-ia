@@ -1,0 +1,97 @@
+name: qe-senior-ia
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  functional-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Probar cálculo monetario sin llamar servicios externos
+        working-directory: functional-api
+        run: mvn --batch-mode --no-transfer-progress -Dtest=CartTotalsTest test
+
+  deterministic-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            performance/requirements-dev.txt
+            evaluation/requirements.txt
+      - name: Instalar SDK y dependencias; ninguna prueba llama al modelo
+        run: python -m pip install -r performance/requirements-dev.txt -r evaluation/requirements.txt
+      - name: Ejecutar pruebas deterministas
+        run: python -m pytest performance/tests evaluation/tests -q
+      - name: Reproducir el gate sobre las dos corridas versionadas
+        run: >-
+          python evaluation/quality_gate.py
+          --results evaluation/results/run1_gemini-2.5-flash-lite.json
+          evaluation/results/run2_gemini-3.1-flash-lite.json
+      - name: Demostrar códigos del quality gate
+        shell: bash
+        run: |
+          python evaluation/quality_gate.py --results evaluation/tests/fixtures/passing_results.json
+          set +e
+          python evaluation/quality_gate.py --results evaluation/tests/fixtures/failing_results.json
+          failing_code=$?
+          python evaluation/quality_gate.py --results evaluation/tests/fixtures/invalid_results.json
+          invalid_code=$?
+          set -e
+          test "$failing_code" -eq 1
+          test "$invalid_code" -eq 2
+
+  performance-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: performance/requirements.txt
+      - run: python -m pip install -r performance/requirements.txt
+      - name: Smoke de 8 segundos contra el stub local
+        working-directory: performance
+        shell: bash
+        run: |
+          TPM=34000 MAX_CONC=4 BASE_MS=250 MS_PER_TOK=8 python -u llm_stub.py 8000 > stub.stdout.txt 2> stub.stderr.txt &
+          stub_pid=$!
+          trap 'kill "$stub_pid" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import socket, time
+          for _ in range(50):
+              try:
+                  with socket.create_connection(("127.0.0.1", 8000), timeout=0.2):
+                      break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("stub no disponible")
+          PY
+          TARGET_HOST=http://127.0.0.1:8000 LOAD_PROFILE=smoke SMOKE_SECONDS=8 MAX_TOKENS=128 \
+            python -m locust -f locustfile.py --headless --html smoke.html --csv smoke --csv-full-history
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-smoke
+          path: |
+            performance/smoke*.csv
+            performance/smoke.html
+            performance/stub.*.txt
+
+# Política deliberada: CI no llama al modelo, no ejecuta saturación y no carga terceros.

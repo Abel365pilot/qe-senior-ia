@@ -1,0 +1,13 @@
+id,size,prompt
+P01,short,¿Cuál es el precio del taladro inalámbrico y qué garantía tiene?
+P02,short,"Compara el martillo y la maza por precio, peso y uso recomendado."
+P03,short,¿Hay stock de la lijadora orbital para entrega hoy en Lima?
+P04,short,Resume las características principales de la llave ajustable.
+P05,medium,"Necesito una herramienta para perforar madera y metal en casa. Compara potencia, accesorios, precio y garantía de las opciones disponibles."
+P06,medium,"Busco un regalo para una persona que empieza en carpintería. Recomienda dos productos del catálogo y explica ventajas, límites y costo total."
+P07,medium,"Explica si el destornillador eléctrico sirve para trabajo continuo, qué incluye el paquete y qué dato del catálogo falta para decidir la compra."
+P08,medium,"Ordena tres herramientas de corte por precio y seguridad de uso. Sustenta cada afirmación únicamente con la información disponible del catálogo."
+P09,long,"Estoy equipando un taller pequeño con presupuesto limitado. Propón una combinación de herramientas para perforar, medir y ajustar; detalla precio individual, total, garantía y cualquier supuesto que no esté respaldado por el catálogo."
+P10,long,"Compara el taladro inalámbrico con el taladro percutor para trabajos en madera, metal y concreto. Incluye potencia, autonomía, accesorios, precio, garantía y una recomendación condicionada; si un dato no aparece, indícalo sin inventarlo."
+P11,long,"Un cliente necesita reparar muebles y montar estanterías durante el fin de semana. Selecciona productos adecuados, explica el orden de uso, calcula el costo con los precios del contexto y advierte qué información de seguridad o disponibilidad no está indicada."
+P12,long,"Evalúa dos alternativas para mantenimiento doméstico frecuente. Resume características técnicas, limitaciones, precio y garantía, diferencia hechos de inferencias y termina con tres preguntas que habría que responder antes de confirmar la compra."

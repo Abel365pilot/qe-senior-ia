@@ -1,0 +1,5 @@
+{
+  "id": "#string",
+  "additional_discount_percentage": "##number",
+  "cart_items": "#array"
+}

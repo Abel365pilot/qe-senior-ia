@@ -1,0 +1,8 @@
+{
+  "id": "#string",
+  "cart_id": "#string",
+  "product_id": "#string",
+  "quantity": "#number",
+  "discount_percentage": "##number",
+  "product": "#object"
+}

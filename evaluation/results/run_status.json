@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "status": "completed_cross_judge",
+  "evaluated_at": "2026-08-24T22:30:25Z",
+  "full_runs_completed": 2,
+  "runs": [
+    {
+      "model": "gemini-2.5-flash-lite",
+      "rows": 6,
+      "result": "evaluation_full_good_20260824T222241Z.json",
+      "raw_result": "raw_full_good_20260824T222241Z.json"
+    },
+    {
+      "model": "gemini-3.1-flash-lite",
+      "rows": 6,
+      "result": "evaluation_full_good_20260824T222920Z.json",
+      "raw_result": "raw_full_good_20260824T222920Z.json"
+    }
+  ],
+  "quality_gate": {
+    "status": "passed",
+    "exit_code": 0,
+    "failures": 0,
+    "aggregation": "worst score per case across runs",
+    "report": "quality_gate_cross_judge_20260824T223025Z.json"
+  },
+  "limitations": [
+    "Las dos corridas usan jueces distintos y demuestran robustez cross-judge; no prueban repetibilidad pura del mismo juez.",
+    "Un segundo run con gemini-2.5-flash-lite fue bloqueado por cuota free-tier observada de 20 solicitudes para ese modelo.",
+    "Un intento con gemini-2.5-flash falló por salida JSON truncada/no válida del juez y no se registró como resultado completo."
+  ],
+  "invented_results": false
+}
