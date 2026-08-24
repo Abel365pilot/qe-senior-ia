@@ -12,7 +12,7 @@ ejecutado se separa de lo diseñado y de lo pendiente.
 
 | Bloque | Implementación | Evidencia/gate |
 |---|---|---|
-| A. API funcional | Karate + Java 21; exactamente 4 escenarios, 7 helpers, 6 contratos, `BigDecimal`, cleanup | 18 pruebas auxiliares; reportes Karate/JUnit; workflow Toolshop Docker fijado |
+| A. API funcional | Karate + Java 21; exactamente 4 escenarios, 7 helpers, 6 contratos, `BigDecimal`, cleanup | 18 pruebas auxiliares; reportes Karate/JUnit; [Toolshop Docker #1 verde](https://github.com/Abel365pilot/qe-senior-ia/actions/runs/32790477664) |
 | B. Rendimiento | Stub local + Locust; 12 prompts; rampa, control y smoke; Azure YAML | CSV/HTML/JSON + `experiment-gate.json` por perfil |
 | C. Evaluación IA | 6 JSONL (2/1/3), Azure AI Evaluation, 3 controles propios | same-judge PASS, cross-judge PASS, negative-control EXPECTED_FAIL |
 | Gobierno | Reglas, bitácora, matriz, estrategia, CI sin modelo | `release_gate.py`, evidencias SDK sanitizadas |
@@ -27,6 +27,8 @@ calidad en [`docs/senior-qa-strategy.md`](docs/senior-qa-strategy.md).
 | Control | Resultado | Alcance honesto |
 |---|---:|---|
 | Funcional sin red | 18/18 pruebas Java | Configuración, contratos, arquitectura, datos y oracle; no prueba Toolshop |
+| Karate Toolshop aislado | [PASS; 4/4 escenarios](https://github.com/Abel365pilot/qe-senior-ia/actions/runs/32790477664) | Docker local, SUT/OpenAPI fijados, health, seed, cleanup y artefacto de 377 KB |
+| CI principal | [PASS; 3/3 jobs](https://github.com/Abel365pilot/qe-senior-ia/actions/runs/32790477741) | Funcional sin red, calidad determinista y smoke de rendimiento |
 | Karate diagnóstico | 4/4 escenarios | Instancia pública, versión previa; no sustituye el SUT aislado |
 | Locust/Python | 17/17 pruebas; 2 smokes; rampa y control | Solo stub en localhost |
 | Rampa 1→60 VU | 1 372 solicitudes; 8,528 % error; p95 19 s | Cola visible a 6 VU; 2× baseline estable a 10; SLO excedido a 20 |
@@ -109,10 +111,10 @@ inválida`. El control negativo debe retornar 1. Detalle:
 ## Decisión de liberación
 
 - **GO para demostración técnica:** código, datos, evidencia y gates son
-  auditables y ejecutables.
-- **NO-GO para producción:** antes se exige Toolshop Docker verde en CI,
-  etiquetado humano y 35 casos como mínimo (50 recomendados) por segmento para
-  calibración. Repetir las mismas seis respuestas no aumenta `n`.
+  auditables; el CI principal y Toolshop Docker están verdes sobre `356e86c`.
+- **NO-GO para producción:** todavía exige etiquetado humano, 35 casos como
+  mínimo (50 recomendados) por segmento para calibración y resolver capacidad
+  antes de aceptar 20 VU. Repetir las mismas seis respuestas no aumenta `n`.
 
 ## Seguridad y reproducibilidad
 
