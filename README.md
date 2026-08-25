@@ -39,6 +39,18 @@ calidad en [`docs/senior-qa-strategy.md`](docs/senior-qa-strategy.md).
 | Control negativo real | EXPECTED_FAIL; código 1; 10 fallos | Seis respuestas malas evaluadas por el SDK, no fixture |
 | Confianza | 6/6; Wilson 95 % inferior 0,6097 | Descriptivo; dataset fijo, sin inferencia productiva |
 
+## Proveedor y cuota observada
+
+La evaluación usó Google AI Studio mediante su endpoint compatible con OpenAI,
+con `gemini-2.5-flash-lite` y `gemini-3.1-flash-lite`. En un intento previo de
+repetición, Gemini 2.5 Flash Lite agotó la cuota gratuita disponible; el evento
+describe aquella ejecución y no se presenta como un límite universal, porque
+Google no expuso una cuota única y estable para el proyecto. Las corridas
+definitivas con Gemini 3.1 Flash Lite completaron con
+`PF_WORKER_COUNT=1`. Antes de repetir el dataset completo se debe verificar la
+cuota vigente del proyecto; el runner no hace reintentos ciegos ni llama al
+modelo desde CI.
+
 ## Arquitectura y aislamiento
 
 ```text

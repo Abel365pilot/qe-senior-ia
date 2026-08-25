@@ -66,6 +66,14 @@ $env:EVAL_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
 
 Para el endpoint oficial compatible de Gemini, el runner levanta durante la corrida un adaptador exclusivamente en `127.0.0.1`. El adaptador elimina `frequency_penalty` y `presence_penalty`, parámetros que el juez de Azure envía pero Gemini rechaza; no registra headers ni credenciales.
 
+**Cuota observada.** Un intento previo de repetición con
+`gemini-2.5-flash-lite` agotó la cuota gratuita disponible. No se interpreta
+como límite universal: Google no expuso una cuota única y estable para el
+proyecto. Las corridas definitivas con
+`gemini-3.1-flash-lite` completaron con `PF_WORKER_COUNT=1`; antes de repetir el
+dataset completo debe comprobarse la cuota vigente del proyecto. No se aplican
+reintentos ciegos ni se rebajan umbrales para compensar una cuota agotada.
+
 ### Azure OpenAI, solo configuración
 
 Use `EVAL_PROVIDER=azure_openai` y configure `AZURE_OPENAI_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT` y, si corresponde, `AZURE_OPENAI_API_VERSION`. Ningún proyecto Azure se crea ni se ejecuta desde este repositorio.

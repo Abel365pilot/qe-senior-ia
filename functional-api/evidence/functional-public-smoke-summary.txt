@@ -3,6 +3,11 @@ Fecha local: 2026-08-24
 Motor: Karate 1.5.2 / Java 21
 Entorno: public (diagnostico puntual, sin carga)
 
+Estado: EVIDENCIA HISTORICA, SUPERADA.
+Se conserva para trazabilidad. La evidencia final es la ejecucion aislada en
+Docker contra el SUT fijado, con 4/4 escenarios PASS, commit 356e86c:
+https://github.com/Abel365pilot/qe-senior-ia/actions/runs/32790477664
+
 Comando:
   .\mvnw.cmd -q "-Dkarate.env=public" test
 
@@ -24,6 +29,6 @@ Alcance de la evidencia:
   - Verifica compilacion, sintaxis, contratos y flujo completo contra la instancia publica.
   - Las credenciales se inyectaron solo por variables de entorno y no se incluyen aqui.
   - Los carritos de diagnostico fueron eliminados (HTTP 204).
-  - No es evidencia de la ejecucion local final: Docker y localhost:8091 no estaban disponibles.
-  - Limitación: Docker Desktop quedó instalado, pero el daemon no inició porque WSL no está habilitado; por eso no existe evidencia local en esta entrega.
-  - La misma suite queda preparada para repetirse con karate.env=local cuando el host tenga WSL y Docker operativos.
+  - Esta corrida publica no es la evidencia local final: en ese momento Docker y localhost:8091 no estaban disponibles.
+  - La limitacion historica quedo resuelta por el workflow aislado enlazado arriba.
+  - La evidencia vigente ejecuta la misma suite con karate.env=local contra Toolshop Docker fijado.
